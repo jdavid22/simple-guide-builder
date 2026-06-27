@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile Guide Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/notebook.css">
+</head>
+<body>
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <h1>Guide Builder</h1>
+      <span class="version">guide · v1</span>
+    </div>
+
+    <div class="device-switch" id="trackToggle" role="group" aria-label="Device track">
+      <span class="device-switch-label">DEVICE</span>
+      <button data-track="android" class="active">🤖 Android</button>
+      <button data-track="iphone">📱 iPhone</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="toolbar-group">
+      <button class="btn" id="btnSettings">⚙ Project</button>
+      <button class="btn" id="btnNew">New</button>
+      <button class="btn" id="btnOpen">Open…</button>
+      <button class="btn" id="btnSave">Save ▾</button>
+      <button class="btn" id="btnPreview">Preview</button>
+      <button class="btn" id="btnPdf">Export PDF</button>
+      <button class="btn primary" id="btnExport">Export HTML</button>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <main class="workspace">
+    <!-- LEFT: steps (workflow + overview) -->
+    <section class="col col-steps">
+      <div class="steps-head">
+        <span class="label">Steps · <span id="trackLabel">Android</span></span>
+      </div>
+
+      <div class="part-group" data-part="workflow">
+        <div class="part-head"><span class="part-name">▸ Workflow</span><span class="part-count" id="wfCount"></span></div>
+        <ul class="step-list" id="wfList"></ul>
+        <div class="part-actions">
+          <button class="btn sm ghost" data-add-shots="workflow">＋ Add screenshots</button>
+        </div>
+      </div>
+
+      <div class="part-group" data-part="overview">
+        <div class="part-head"><span class="part-name">◎ Overview</span><span class="part-count" id="ovCount"></span></div>
+        <ul class="step-list" id="ovList"></ul>
+        <div class="part-actions">
+          <button class="btn sm ghost" data-add-shots="overview">＋ Add screenshots</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER: the screenshot / annotation stage -->
+    <section class="col col-stage" id="stageCol">
+      <div class="stage-empty-msg" id="stageEmpty">
+        Add screenshots to begin.<br><br>
+        Drag &amp; drop multiple screenshots here<br>— they auto-order by file date.
+      </div>
+      <div id="stageHost" style="display:none">
+        <div class="stage" id="stage"></div>
+        <div class="drop-hint">Drop a replacement screenshot here — annotations keep their % positions.</div>
+      </div>
+    </section>
+
+    <!-- RIGHT: collapsible build panel -->
+    <aside class="col col-build" id="buildPanel">
+      <div id="buildEmpty" class="build-empty">Select or add a step to edit it here.</div>
+      <div id="buildBody" style="display:none">
+
+        <!-- 1 · Step details -->
+        <div class="section open" data-sec="details">
+          <div class="sec-head"><span class="caret">▸</span><strong>Step details</strong></div>
+          <div class="sec-body">
+            <div class="field"><label class="label">Step title</label><input type="text" id="fTitle" placeholder="e.g. Approve the sign-in request"></div>
+            <div class="field"><label class="label">Body text</label><textarea id="fBody" placeholder="What the reader should do on this screen…"></textarea></div>
+            <div class="field"><label class="label">Note / aside</label><textarea id="fNote" placeholder="Inline callout, e.g. “If a different screen appears, go to Step 6.”"></textarea></div>
+
+            <!-- overview steps only: where this deep-dive is reachable from -->
+            <div id="overviewLink" style="display:none">
+              <div class="field"><label class="label">“Learn more” button label</label><input type="text" id="fLinkLabel"></div>
+              <label class="label">Show on workflow steps</label>
+              <div id="linkStepsList" class="link-steps"></div>
+              <div id="linkWarn" class="link-warn" style="display:none">⚠ Not linked — this overview appears in the PDF only, not the interactive viewer.</div>
+            </div>
+
+            <div class="toolbar-group">
+              <button class="btn sm" id="btnReplaceShot">⟲ Replace screenshot</button>
+              <button class="btn sm danger" id="btnRemoveStep">🗑 Remove step</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 · Annotations -->
+        <div class="section" data-sec="annotations">
+          <div class="sec-head"><span class="caret">▸</span><span class="tag-dot"></span><strong>Annotations</strong><span class="filled" data-filled></span></div>
+          <div class="sec-body">
+            <div class="stage-tools" id="stageTools">
+              <button class="tool-btn active" data-tool="select"><span class="gl">▱</span>Select</button>
+              <button class="tool-btn" data-tool="arrow"><span class="gl">↗</span>Arrow</button>
+              <button class="tool-btn" data-tool="box"><span class="gl">▭</span>Box</button>
+              <button class="tool-btn" data-tool="hotspot"><span class="gl">◎</span>Hotspot</button>
+              <button class="tool-btn" data-tool="dot"><span class="gl">①</span>Dot</button>
+              <button class="tool-btn" data-tool="redact"><span class="gl">▦</span>Blur</button>
+            </div>
+            <div class="color-dots" id="colorDots" style="margin:8px 0"></div>
+            <ul class="ann-list" id="annList"></ul>
+            <div id="annEditWrap"></div>
+          </div>
+        </div>
+
+        <!-- 3 · Tip -->
+        <div class="section" data-sec="tip">
+          <div class="sec-head"><span class="caret">▸</span><span class="tag-dot" style="background:#2e7d32"></span><strong>Tip</strong><span class="filled" data-filled></span></div>
+          <div class="sec-body"><div class="field" style="margin-bottom:0"><textarea id="fTip" placeholder="A helpful tip for this step…"></textarea></div></div>
+        </div>
+
+        <!-- 4 · Color / icon key -->
+        <div class="section" data-sec="table">
+          <div class="sec-head"><span class="caret">▸</span><span class="tag-dot" style="background:#e8a317"></span><strong>Color / icon key (this step)</strong><span class="filled" data-filled></span></div>
+          <div class="sec-body">
+            <div class="field compact"><label class="label">Heading</label><input type="text" id="fTableTitle" placeholder="Key"></div>
+            <div id="stepTableRows"></div>
+            <button class="btn sm" id="btnAddTableRow">+ Row</button>
+          </div>
+        </div>
+
+        <!-- 5 · References -->
+        <div class="section" data-sec="refs">
+          <div class="sec-head"><span class="caret">▸</span><span class="tag-dot" style="background:#2c5aa0"></span><strong>References (PDF / links)</strong><span class="filled" data-filled></span></div>
+          <div class="sec-body">
+            <div id="refRows"></div>
+            <div class="toolbar-group" style="margin-top:8px">
+              <button class="btn sm" id="btnAddLink">+ Link</button>
+              <button class="btn sm" id="btnAddPdf">+ Attach PDF</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="footer-status">
+      <span class="size-badge" id="sizeBadge">Est. export size: 0 B</span>
+      <span class="muted" id="stepCounts"></span>
+      <span class="spacer"></span>
+      <span class="muted">Local-first · nothing leaves your browser</span>
+    </div>
+    <a class="footer-credit" href="https://josiahmdavidson.com" target="_blank" rel="noopener">Built by Claude + Josiah in Illinois 🌽</a>
+  </footer>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal-back" id="modalBack">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <!-- hidden inputs -->
+  <input type="file" id="fileShots" accept="image/*" multiple style="display:none">
+  <input type="file" id="fileReplace" accept="image/*" style="display:none">
+  <input type="file" id="filePdf" accept="application/pdf" style="display:none">
+  <input type="file" id="fileOpen" accept="application/json,.json" style="display:none">
+  <input type="file" id="fileMedia" accept="image/*,application/pdf" multiple style="display:none">
+  <input type="file" id="fileKeyImg" accept="image/*" style="display:none">
+
+  <div class="toast" id="toast"></div>
+
+  <!-- classic scripts, ordered: no ES modules so file:// works -->
+  <script src="js/model.js"></script>
+  <script src="js/annotator.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/viewer-template.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
