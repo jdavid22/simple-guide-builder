@@ -99,6 +99,7 @@ h1, h2, h3 { font-weight: 700; line-height: 1.2; margin: 0; }
 .topbar .spacer { flex: 1; }
 
 .toolbar-group { display: flex; gap: 8px; align-items: center; }
+.tb-sep { width: 1px; height: 22px; background: var(--panel-line); margin: 0 3px; align-self: center; }
 
 /* ---- Buttons ---- */
 .btn {
@@ -391,6 +392,7 @@ h1, h2, h3 { font-weight: 700; line-height: 1.2; margin: 0; }
 }
 .dev-check:has(input:checked) { border-color: var(--red); background: var(--primary-soft); color: var(--ink); }
 .dev-check input { accent-color: var(--red); width: 16px; height: 16px; }
+.font-preview { margin-top: 8px; padding: 11px 13px; border: 1.5px solid var(--panel-line); border-radius: 6px; background: var(--paper-2); color: var(--ink); font-size: 16px; line-height: 1.5; }
 .choice-card h4 { font-family: var(--mono); margin-bottom: 4px; }
 .choice-card p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 

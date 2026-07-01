@@ -48,6 +48,9 @@
 
     renderAll();
     toast('New project — add screenshots to begin.');
+    // Nudge: open Guide details on launch so the title/contact/devices get set
+    // (unless the user opted out — preference stored per browser).
+    if (getAutoOpen()) openSettingsModal();
   }
 
   // ---- top bar ----------------------------------------------------------
@@ -634,17 +637,24 @@
   function openSettingsModal() {
     var p = project;
     openModal(
-      '<div class="m-head"><h2>Project settings</h2></div><div class="m-body">' +
+      '<div class="m-head"><h2>Guide details</h2></div><div class="m-body">' +
       '<div class="field"><label class="label">Guide title</label><input class="inp" id="setTitle" value="' + V.esc(p.title) + '"></div>' +
       '<div class="field"><label class="label">Description</label><textarea class="inp" id="setDesc" rows="2">' + V.esc(p.description) + '</textarea></div>' +
-      '<div class="two-col"><div class="field"><label class="label">IPT contact name</label><input class="inp" id="setIptName" value="' + V.esc(p.ipt.name) + '"></div>' +
-      '<div class="field"><label class="label">IPT contact email (“I’m stuck”)</label><input class="inp" id="setIptEmail" type="email" value="' + V.esc(p.ipt.email) + '"></div></div>' +
+      '<div class="two-col"><div class="field"><label class="label">Support contact name</label><input class="inp" id="setIptName" value="' + V.esc(p.ipt.name) + '"></div>' +
+      '<div class="field"><label class="label">Support contact email (“I’m stuck”)</label><input class="inp" id="setIptEmail" type="email" value="' + V.esc(p.ipt.email) + '"></div></div>' +
       '<hr class="divider"><label class="label">Device types in this guide</label>' +
       '<div class="dev-checks">' + M.PLATFORMS.map(function (plat) {
         var m = M.DEVICE_META[plat];
         return '<label class="dev-check"><input type="checkbox" value="' + plat + '"' + (p.devices.indexOf(plat) >= 0 ? ' checked' : '') + '>' + m.icon + ' ' + m.label + '</label>';
       }).join('') + '</div>' +
       '<p class="hint" style="margin:2px 0 0">Pick mobile (Android and/or iPhone) <em>or</em> Computer — not both. Readers are asked which device only when more than one is enabled.</p>' +
+      '<hr class="divider"><div class="field"><label class="label">Guide font</label>' +
+      '<select class="inp" id="setFont">' + M.FONTS.map(function (f) {
+        return '<option value="' + f.key + '"' + (p.font === f.key ? ' selected' : '') + ' style="font-family:' + f.stack.replace(/"/g, "'") + '">' + f.label + '</option>';
+      }).join('') + '</select>' +
+      '<div class="font-preview" id="fontPreview">The quick brown fox jumps over the lazy dog. 1234567890</div>' +
+      '<p class="hint" style="margin:4px 0 0">Export only — sets the reading text in the exported guide (viewer &amp; PDF). The builder’s own look doesn’t change.</p></div>' +
+      '<hr class="divider"><label class="dev-check" style="flex:none"><input type="checkbox" id="setAutoOpen"' + (getAutoOpen() ? ' checked' : '') + '> Open Guide details automatically when I launch the builder</label>' +
       '</div><div class="m-foot"><button class="btn ghost" id="setCancel">Close</button><button class="btn primary" id="setSave">Save</button></div>'
     );
 
@@ -661,16 +671,34 @@
       };
     });
 
+    // live font preview
+    var fontSel = $('setFont'), fontPrev = $('fontPreview');
+    function applyFontPreview() {
+      var f = M.FONTS.filter(function (x) { return x.key === fontSel.value; })[0];
+      if (f && fontPrev) fontPrev.style.fontFamily = f.stack;
+    }
+    if (fontSel) { applyFontPreview(); fontSel.onchange = applyFontPreview; }
+
     $('setCancel').onclick = closeModal;
     $('setSave').onclick = function () {
       var checked = Array.prototype.map.call(document.querySelectorAll('.dev-checks input:checked'), function (i) { return i.value; });
       if (!checked.length) { alert('Select at least one device type.'); return; }
       p.title = $('setTitle').value; p.description = $('setDesc').value;
       p.ipt.name = $('setIptName').value; p.ipt.email = $('setIptEmail').value;
+      p.font = $('setFont').value;
+      setAutoOpen($('setAutoOpen').checked);
       p.devices = M.sanitizeDevices(M.PLATFORMS.filter(function (x) { return checked.indexOf(x) >= 0; }));
       if (p.devices.indexOf(activeTrack) < 0) { activeTrack = p.devices[0]; activeStepId = null; }
-      closeModal(); renderAll(); toast('Project settings saved.');
+      closeModal(); renderAll(); toast('Guide details saved.');
     };
+  }
+
+  // Per-browser preference: auto-open Guide details on launch (default on).
+  function getAutoOpen() {
+    try { return localStorage.getItem('gb.autoOpenSettings') !== '0'; } catch (e) { return true; }
+  }
+  function setAutoOpen(on) {
+    try { localStorage.setItem('gb.autoOpenSettings', on ? '1' : '0'); } catch (e) {}
   }
 
   // ===== OPEN / LOAD =====================================================
@@ -693,6 +721,7 @@
       '<p>This project references <strong>' + missing.length + '</strong> media file' + (missing.length === 1 ? '' : 's') +
       ' that live next to the JSON. Select them (the whole image folder is fine) so they can be loaded for editing.</p>' +
       '<ul class="mono" style="font-size:12px;max-height:140px;overflow:auto">' + missing.map(function (m) { return '<li>' + V.esc(m) + '</li>'; }).join('') + '</ul>' +
+      '<p class="hint" style="margin-top:6px">Files are matched by <strong>filename</strong> — keep the original names the project saved them with. Renamed or unselected files stay missing (the rest still load).</p>' +
       '</div><div class="m-foot"><button class="btn ghost" id="mediaSkip">Load without images</button><button class="btn primary" id="mediaPick">Select files…</button></div>'
     );
     $('mediaPick').onclick = function () { $('fileMedia').click(); };

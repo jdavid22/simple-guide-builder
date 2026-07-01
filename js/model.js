@@ -22,6 +22,19 @@
   var ANNOTATION_TYPES = ['arrow', 'box', 'hotspot', 'dot', 'redact'];
   var PARTS = ['workflow', 'overview'];   // every track has both, in this order
   var DEFAULT_LEARN_LABEL = 'Learn more about the options on this screen';
+
+  // Reading-text fonts offered for the EXPORTED guide (viewer + PDF). Only
+  // offline-safe system stacks — no web fonts that would fail from file://.
+  var FONTS = [
+    { key: 'system', label: 'System sans (default)', stack: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' },
+    { key: 'serif', label: 'Serif — Georgia', stack: 'Georgia, Cambria, "Times New Roman", serif' },
+    { key: 'verdana', label: 'Legible — Verdana', stack: 'Verdana, Geneva, Tahoma, sans-serif' },
+    { key: 'trebuchet', label: 'Friendly — Trebuchet', stack: '"Trebuchet MS", "Segoe UI", Helvetica, Arial, sans-serif' }
+  ];
+  function fontStack(key) {
+    var f = FONTS.filter(function (x) { return x.key === key; })[0];
+    return (f || FONTS[0]).stack;
+  }
   var PLATFORMS = ['android', 'iphone', 'pc'];   // all supported device tracks
   var DEVICE_META = {
     android: { label: 'Android', icon: '🤖' },
@@ -75,6 +88,7 @@
       title: '',
       description: '',
       ipt: { name: '', email: '' },   // "I'm stuck" contact
+      font: 'system',                  // reading-text font for the exported guide
       devices: ['android', 'iphone'],  // which device tracks this guide includes
       tracks: {
         android: newTrack(),
@@ -200,6 +214,7 @@
     proj.title = p.title || '';
     proj.description = p.description || '';
     proj.ipt = { name: (p.ipt && p.ipt.name) || '', email: (p.ipt && p.ipt.email) || '' };
+    proj.font = FONTS.filter(function (f) { return f.key === p.font; })[0] ? p.font : 'system';
     PLATFORMS.forEach(function (plat) {
       proj.tracks[plat] = normalizeTrack(p.tracks && p.tracks[plat]);
     });
@@ -216,6 +231,8 @@
     ANNOTATION_TYPES: ANNOTATION_TYPES,
     PARTS: PARTS,
     DEFAULT_LEARN_LABEL: DEFAULT_LEARN_LABEL,
+    FONTS: FONTS,
+    fontStack: fontStack,
     PLATFORMS: PLATFORMS,
     DEVICE_META: DEVICE_META,
     sanitizeDevices: sanitizeDevices,

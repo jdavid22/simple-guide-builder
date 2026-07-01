@@ -212,7 +212,7 @@
     }
 
     return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(project.title || 'Guide') +
-      ' — ' + esc(devName) + '</title><style>' + PRINT_CSS + '</style></head><body class="print">' + body +
+      ' — ' + esc(devName) + '</title><style>' + PRINT_CSS + fontCSS(project) + '</style></head><body class="print">' + body +
       '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>';
   }
 
@@ -304,7 +304,7 @@
         '</div></div>' +
         '<div class="v-controls">' +
         '<button class="v-btn" data-act="prev"' + (state.idx === 0 ? ' disabled' : '') + '>‹ Back</button>' +
-        (tour ? '' : '<button class="v-stuck" data-act="stuck">🙋 I\'m stuck</button>') +
+        ((!tour && DATA.ipt && DATA.ipt.email) ? '<button class="v-stuck" data-act="stuck">🙋 I\'m stuck</button>' : '') +
         '<button class="v-btn primary" data-act="next"' + (state.idx === seq.length - 1 ? ' disabled' : '') + '>' +
         (state.idx === seq.length - 1 ? 'Done' : 'Next ›') + '</button>' +
         '</div>' +
@@ -393,6 +393,13 @@
     .map(function (f) { return f.toString(); }).join('\n\n');
   var RUNTIME_SRC = SHARED_SRC + '\n\n(' + runViewer.toString() + ')();';
 
+  // Override the reading-text font for the exported guide (appended after the
+  // base stylesheet so it wins). Builder/Node context has Model loaded.
+  function fontCSS(project) {
+    var stack = (global.Model && global.Model.fontStack) ? global.Model.fontStack(project.font) : '';
+    return stack ? 'body{font-family:' + stack + '}' : '';
+  }
+
   function buildViewerHTML(project, opts) {
     opts = opts || {};
     var data = JSON.stringify(project)
@@ -400,7 +407,7 @@
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">' +
       '<title>' + esc(project.title || 'How-to Guide') + '</title>' +
-      '<style>' + VIEWER_CSS + '</style></head><body>' +
+      '<style>' + VIEWER_CSS + fontCSS(project) + '</style></head><body>' +
       '<div id="app"></div>' +
       '<script>window.__GUIDE_DATA__=' + data + ';<\/script>' +
       '<script>' + RUNTIME_SRC + '<\/script>' +
