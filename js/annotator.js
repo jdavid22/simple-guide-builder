@@ -43,11 +43,14 @@
 
   Annotator.prototype.step = function () { return this.opts.getStep(); };
 
-  // strokeW / radius scale with image width so they look consistent across
-  // screenshots of different resolutions.
-  Annotator.prototype._unit = function () {
-    var img = this.step() && this.step().image;
-    return img ? img.w : 1000;
+  // Image pixel size plus the unit that marker sizes scale with. Using the
+  // SHORTER side keeps markers proportionate on wide desktop screenshots
+  // (width-based sizing made them huge). getScale() is the guide's marker size.
+  Annotator.prototype._geom = function () {
+    var im = this.step() && this.step().image;
+    var w = (im && im.w) || 1000, h = (im && im.h) || 2000;
+    var scale = this.opts.getScale ? (this.opts.getScale() || 1) : 1;
+    return { w: w, h: h, u: Math.min(w, h) * scale };
   };
 
   Annotator.prototype.setSelected = function (id) {
@@ -123,11 +126,11 @@
   // Builds (and registers) the <g> for one annotation. reuseG lets a redact
   // keep its decoded <image> across drag frames.
   Annotator.prototype._buildAnnotation = function (a, reuseG) {
-    var w = this._unit(), h = this.step().image.h || (w * 2);
+    var G = this._geom(), w = G.w, h = G.h, u = G.u;
     var px = function (p) { return p / 100 * w; };
     var py = function (p) { return p / 100 * h; };
     var sel = (a.id === this.selectedId);
-    var sw = Math.max(2, w * 0.007);
+    var sw = Math.max(2, u * 0.007);
     var g = el('g', { 'data-ann': a.id, style: 'cursor:pointer' });
     var defs = this._defs;
 
@@ -145,8 +148,8 @@
         'marker-end': 'url(#' + headId + ')'
       }));
       if (sel) {
-        g.appendChild(this._handle(px(a.x1), py(a.y1), 'p1', w));
-        g.appendChild(this._handle(px(a.x2), py(a.y2), 'p2', w));
+        g.appendChild(this._handle(px(a.x1), py(a.y1), 'p1', u));
+        g.appendChild(this._handle(px(a.x2), py(a.y2), 'p2', u));
       }
     } else if (a.type === 'box' || a.type === 'hotspot' || a.type === 'redact') {
       var x = px(a.x), y = py(a.y), bw = px(a.w), bh = py(a.h);
@@ -155,7 +158,7 @@
         // region is scoped to the rect so the blur isn't computed over the
         // whole screenshot on every frame.
         var fid = 'blur_' + a.id, cid = 'clip_' + a.id;
-        var std = Math.max(6, w * 0.02), m = std * 3;
+        var std = Math.max(6, u * 0.02), m = std * 3;
         var f = el('filter', {
           id: fid, 'data-ann-def': a.id, filterUnits: 'userSpaceOnUse',
           x: Math.max(0, x - m), y: Math.max(0, y - m), width: bw + 2 * m, height: bh + 2 * m
@@ -179,23 +182,23 @@
         var fill = a.type === 'hotspot' ? a.color : 'none';
         var op = a.type === 'hotspot' ? '0.14' : '1';
         g.appendChild(el('rect', {
-          x: x, y: y, width: bw, height: bh, rx: w * 0.01,
+          x: x, y: y, width: bw, height: bh, rx: u * 0.01,
           fill: fill, 'fill-opacity': op, stroke: a.color, 'stroke-width': sw * (a.weight || 1)
         }));
         if (a.type === 'hotspot' && a.number) {
-          g.appendChild(this._numBadge(x + bw - sw, y + sw, a.number, a.color, w));
+          g.appendChild(this._numBadge(x + bw - sw, y + sw, a.number, a.color, u));
         }
       }
       if (sel) {
-        g.appendChild(this._handle(x, y, 'nw', w));
-        g.appendChild(this._handle(x + bw, y, 'ne', w));
-        g.appendChild(this._handle(x, y + bh, 'sw', w));
-        g.appendChild(this._handle(x + bw, y + bh, 'se', w));
+        g.appendChild(this._handle(x, y, 'nw', u));
+        g.appendChild(this._handle(x + bw, y, 'ne', u));
+        g.appendChild(this._handle(x, y + bh, 'sw', u));
+        g.appendChild(this._handle(x + bw, y + bh, 'se', u));
       }
     } else if (a.type === 'dot') {
-      var r = w * 0.045;
-      g.appendChild(this._numBadge(px(a.x), py(a.y), a.number || '?', a.color, w, true));
-      if (sel) g.appendChild(this._handle(px(a.x), py(a.y) - r, 'move', w));
+      var r = u * 0.045;
+      g.appendChild(this._numBadge(px(a.x), py(a.y), a.number || '?', a.color, u));
+      if (sel) g.appendChild(this._handle(px(a.x), py(a.y) - r, 'move', u));
     }
 
     if (sel) g.setAttribute('class', 'ann-selected');
@@ -203,8 +206,8 @@
     return g;
   };
 
-  Annotator.prototype._numBadge = function (cx, cy, n, color, w) {
-    var r = w * 0.045;
+  Annotator.prototype._numBadge = function (cx, cy, n, color, u) {
+    var r = u * 0.045;
     var g = el('g', {});
     g.appendChild(el('circle', { cx: cx, cy: cy, r: r, fill: color, stroke: '#fff', 'stroke-width': r * 0.18 }));
     var t = el('text', {
@@ -216,8 +219,8 @@
     return g;
   };
 
-  Annotator.prototype._handle = function (cx, cy, role, w) {
-    var r = Math.max(5, w * 0.018);
+  Annotator.prototype._handle = function (cx, cy, role, u) {
+    var r = Math.max(5, u * 0.018);
     return el('circle', { cx: cx, cy: cy, r: r, class: 'handle', 'data-handle': role });
   };
 

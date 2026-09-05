@@ -69,6 +69,7 @@
       getStep: currentStep,
       getTool: function () { return tool; },
       getColor: function () { return color; },
+      getScale: function () { return project.annScale || 1; },
       onChange: function () { renderAnnList(); refreshSections(); updateStepCard(activePart, activeStepId); updateFooter(); commit(); },
       onSelect: function (id) { renderAnnList(); renderAnnEdit(id); }
     });
@@ -1091,6 +1092,11 @@
         return '<label class="dev-check"><input type="checkbox" value="' + plat + '"' + (p.devices.indexOf(plat) >= 0 ? ' checked' : '') + '>' + m.icon + ' ' + m.label + '</label>';
       }).join('') + '</div>' +
       '<p class="hint" style="margin:2px 0 0">Pick mobile (Android and/or iPhone) <em>or</em> Computer — not both. Readers are asked which device only when more than one is enabled.</p>' +
+      '<hr class="divider"><div class="field"><label class="label">Marker size</label>' +
+      '<select class="inp" id="setAnnScale">' + [[0.7, 'Small — for busy desktop screens'], [1, 'Medium (default)'], [1.3, 'Large']].map(function (o) {
+        return '<option value="' + o[0] + '"' + (Math.abs((p.annScale || 1) - o[0]) < 0.01 ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select>' +
+      '<p class="hint" style="margin:4px 0 0">How big arrows, dots, boxes and hotspot badges are drawn on every screenshot (builder, web guide and PDF).</p></div>' +
       '<hr class="divider"><div class="field"><label class="label">Guide font</label>' +
       '<select class="inp" id="setFont">' + M.FONTS.map(function (f) {
         return '<option value="' + f.key + '"' + (p.font === f.key ? ' selected' : '') + ' style="font-family:' + f.stack.replace(/"/g, "'") + '">' + f.label + '</option>';
@@ -1141,6 +1147,7 @@
       p.title = $('setTitle').value.trim(); p.description = $('setDesc').value.trim();
       p.ipt.name = $('setIptName').value.trim(); p.ipt.email = email;
       p.font = $('setFont').value;
+      p.annScale = parseFloat($('setAnnScale').value) || 1;
       setAutoOpen($('setAutoOpen').checked);
       p.devices = newDevices;
       if (p.devices.indexOf(activeTrack) < 0) { activeTrack = p.devices[0]; activeStepId = null; }

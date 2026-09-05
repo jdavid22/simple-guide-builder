@@ -85,6 +85,7 @@
       description: '',
       ipt: { name: '', email: '' },   // "I'm stuck" contact
       font: 'system',                  // reading-text font for the exported guide
+      annScale: 1,                     // marker size multiplier (arrows/dots/boxes)
       devices: ['android', 'iphone'],  // which device tracks this guide includes
       tracks: {
         android: newTrack(),
@@ -209,6 +210,7 @@
     proj.description = p.description || '';
     proj.ipt = { name: (p.ipt && p.ipt.name) || '', email: (p.ipt && p.ipt.email) || '' };
     proj.font = FONTS.filter(function (f) { return f.key === p.font; })[0] ? p.font : 'system';
+    proj.annScale = (typeof p.annScale === 'number' && p.annScale > 0) ? Math.min(2, Math.max(0.4, p.annScale)) : 1;
     PLATFORMS.forEach(function (plat) {
       proj.tracks[plat] = normalizeTrack(p.tracks && p.tracks[plat]);
     });

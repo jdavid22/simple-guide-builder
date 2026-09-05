@@ -37,10 +37,11 @@
     opts = opts || {};
     anns = anns || [];
     var w = image.w || 1000, h = image.h || 2000;
+    var u = Math.min(w, h) * (opts.scale || 1);   // marker sizes follow the shorter side
     function px(p) { return (p / 100 * w).toFixed(2); }
     function py(p) { return (p / 100 * h).toFixed(2); }
-    var sw = Math.max(2, w * 0.007);
-    var rdot = w * 0.045;
+    var sw = Math.max(2, u * 0.007);
+    var rdot = u * 0.045;
     var defs = '', body = '', callouts = [], counter = 0;
 
     function badge(cx, cy, n, color) {
@@ -64,21 +65,21 @@
           '" stroke="' + a.color + '" stroke-width="' + (sw * (a.weight || 1)).toFixed(2) + '" stroke-linecap="round" marker-end="url(#' + mid + ')"/>';
       } else if (a.type === 'box') {
         body += '<rect x="' + px(a.x) + '" y="' + py(a.y) + '" width="' + px(a.w) + '" height="' + py(a.h) +
-          '" rx="' + (w * 0.01).toFixed(2) + '" fill="none" stroke="' + a.color + '" stroke-width="' + (sw * (a.weight || 1)).toFixed(2) + '"/>';
+          '" rx="' + (u * 0.01).toFixed(2) + '" fill="none" stroke="' + a.color + '" stroke-width="' + (sw * (a.weight || 1)).toFixed(2) + '"/>';
       } else if (a.type === 'redact') {
         var fid = 'bl' + i, cid = 'cl' + i;
-        defs += '<filter id="' + fid + '"><feGaussianBlur in="SourceGraphic" stdDeviation="' + Math.max(6, w * 0.02).toFixed(2) + '"/></filter>';
+        defs += '<filter id="' + fid + '"><feGaussianBlur in="SourceGraphic" stdDeviation="' + Math.max(6, u * 0.02).toFixed(2) + '"/></filter>';
         defs += '<clipPath id="' + cid + '"><rect x="' + px(a.x) + '" y="' + py(a.y) + '" width="' + px(a.w) + '" height="' + py(a.h) + '"/></clipPath>';
         body += '<image href="' + image.src + '" x="0" y="0" width="' + w + '" height="' + h + '" filter="url(#' + fid + ')" clip-path="url(#' + cid + ')" preserveAspectRatio="none"/>';
         body += '<rect x="' + px(a.x) + '" y="' + py(a.y) + '" width="' + px(a.w) + '" height="' + py(a.h) + '" fill="none" stroke="#333" stroke-width="' + (sw * 0.5).toFixed(2) + '" stroke-dasharray="' + sw.toFixed(2) + ',' + sw.toFixed(2) + '"/>';
       } else if (a.type === 'hotspot') {
         var hx = px(a.x), hy = py(a.y), hw = px(a.w), hh = py(a.h);
         if (opts.calloutMode) {
-          body += '<rect x="' + hx + '" y="' + hy + '" width="' + hw + '" height="' + hh + '" rx="' + (w * 0.01).toFixed(2) + '" fill="' + a.color + '" fill-opacity="0.12" stroke="' + a.color + '" stroke-width="' + sw.toFixed(2) + '"/>';
+          body += '<rect x="' + hx + '" y="' + hy + '" width="' + hw + '" height="' + hh + '" rx="' + (u * 0.01).toFixed(2) + '" fill="' + a.color + '" fill-opacity="0.12" stroke="' + a.color + '" stroke-width="' + sw.toFixed(2) + '"/>';
           body += badge(parseFloat(hx) + parseFloat(hw) - rdot, parseFloat(hy) + rdot, num || (++counter), a.color);
         } else {
           body += '<g class="hs" data-hs="' + i + '" style="cursor:pointer">' +
-            '<rect x="' + hx + '" y="' + hy + '" width="' + hw + '" height="' + hh + '" rx="' + (w * 0.01).toFixed(2) + '" fill="' + a.color + '" fill-opacity="0.10" stroke="' + a.color + '" stroke-width="' + sw.toFixed(2) + '"/>' +
+            '<rect x="' + hx + '" y="' + hy + '" width="' + hw + '" height="' + hh + '" rx="' + (u * 0.01).toFixed(2) + '" fill="' + a.color + '" fill-opacity="0.10" stroke="' + a.color + '" stroke-width="' + sw.toFixed(2) + '"/>' +
             badge(parseFloat(hx) + parseFloat(hw) - rdot, parseFloat(hy) + rdot, num || (i + 1), a.color) + '</g>';
         }
         if (hasText) callouts.push({ num: num || callouts.length + 1, text: a.text, type: 'hotspot', idx: i });
@@ -141,9 +142,9 @@
   }
 
   // The image block (image + overlay). calloutMode for print.
-  function renderImageBlock(step, calloutMode) {
+  function renderImageBlock(step, calloutMode, scale) {
     if (!step.image || !step.image.src) return { html: '', callouts: [] };
-    var m = annMarkup(step.image, step.annotations, { calloutMode: calloutMode });
+    var m = annMarkup(step.image, step.annotations, { calloutMode: calloutMode, scale: scale });
     var html = '<div class="g-shot"><img src="' + esc(step.image.src) + '" alt="' + esc(step.title) + '">' + m.svg + '</div>';
     return { html: html, callouts: m.callouts };
   }
@@ -176,7 +177,7 @@
       body += '<h2 class="p-part">Workflow</h2>';
       workflow.forEach(function (step, i) {
         var n = i + 1;
-        var img = renderImageBlock(step, true); // print -> numbered callouts
+        var img = renderImageBlock(step, true, project.annScale); // print -> numbered callouts
         var ovs = ovForStep(step.id);
         var learn = '';
         if (ovs.length) {
@@ -195,7 +196,7 @@
 
     // Overview pages — each on its own page, labeled by title.
     overview.forEach(function (ov, i) {
-      var img = renderImageBlock(ov, true);
+      var img = renderImageBlock(ov, true, project.annScale);
       var rel = stepNumsForOv(ov);
       var relNote = (workflow.length && rel.length)
         ? '<div class="p-learn"><span class="g-tag">Relates to</span>Step ' + rel.join(', ') + '</div>' : '';
@@ -273,7 +274,7 @@
       if (state.idx >= seq.length) state.idx = seq.length - 1;
       var step = seq[state.idx];
       var tour = isTour();
-      var img = renderImageBlock(step, false);
+      var img = renderImageBlock(step, false, DATA.annScale);
       var devName = (DEV[state.platform] && DEV[state.platform].label) || state.platform;
 
       var nav = '<div class="v-progress">';
@@ -320,7 +321,7 @@
 
     // Overview deep-dive opened from a workflow step.
     function renderOverview(ov) {
-      var img = renderImageBlock(ov, false);
+      var img = renderImageBlock(ov, false, DATA.annScale);
       var backLabel = isTour() ? 'Back' : ('Back to Step ' + (state.returnIdx + 1));
       root.innerHTML =
         '<div class="v-top">' +
@@ -388,7 +389,7 @@
       var b = root.querySelector('[data-act=full]'); if (b) b.onclick = function () { openFull(step); };
     }
     function openFull(step) {
-      var m = annMarkup(step.image, step.annotations, { calloutMode: true });
+      var m = annMarkup(step.image, step.annotations, { calloutMode: true, scale: DATA.annScale });
       var caps = m.callouts.map(function (c) { return '<div><b>' + c.num + '</b><span>' + nl2br(c.text) + '</span></div>'; }).join('');
       var html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(step.title || 'Screenshot') + '</title>' +
         '<style>html,body{margin:0;min-height:100%;background:#15181d;color:#eee;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}' +
