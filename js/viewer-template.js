@@ -26,6 +26,10 @@
 
   function nl2br(s) { return esc(s).replace(/\n/g, '<br>'); }
 
+  // Desktop/landscape screenshots get stacked, full-width layouts; portrait
+  // phone screenshots sit beside the text on wide screens.
+  function isLandscape(step) { var im = step && step.image; return !!(im && im.w && im.h && im.w >= im.h); }
+
   // Build the SVG annotation overlay for one image.
   // opts.calloutMode = true -> every annotation with text gets a sequential
   // number badge (print). Returns { svg, callouts:[{num,text,type}] }.
@@ -182,7 +186,7 @@
         body += '<section class="p-step">' +
           '<div class="p-step-head"><span class="p-num">' + n + '</span>' +
           '<h2>' + esc(step.title || 'Step ' + n) + '</h2></div>' +
-          '<div class="p-step-grid">' +
+          '<div class="p-step-grid' + (isLandscape(step) ? ' landscape' : '') + '">' +
           '<div class="p-step-img">' + img.html + '</div>' +
           '<div class="p-step-text">' + renderStepText(step, img.callouts) + learn + '</div>' +
           '</div></section>';
@@ -200,7 +204,7 @@
         '<div class="p-step-head"><span class="p-ovtag">Overview</span>' +
         '<h2>' + esc(ov.title || ('Overview ' + (i + 1))) + '</h2></div>' +
         relNote +
-        '<div class="p-step-grid">' +
+        '<div class="p-step-grid' + (isLandscape(ov) ? ' landscape' : '') + '">' +
         '<div class="p-step-img">' + img.html + '</div>' +
         '<div class="p-step-text">' + renderStepText(ov, img.callouts) + '</div>' +
         '</div></section>';
@@ -221,7 +225,7 @@
   function runViewer() {
     var DATA = window.__GUIDE_DATA__;
     var root = document.getElementById('app');
-    var state = { platform: null, idx: 0, multi: false, overviewId: null, returnIdx: 0 };
+    var state = { platform: null, idx: 0, multi: false, overviewId: null, returnIdx: 0, finished: false };
     var DEV = { android: { label: 'Android', icon: '🤖' }, iphone: { label: 'iPhone', icon: '📱' }, pc: { label: 'Computer', icon: '💻' } };
     var DEFAULT_LEARN = 'Learn more about the options on this screen';
 
@@ -240,7 +244,7 @@
       var avail = devices.filter(hasSteps);
       if (!avail.length) avail = devices;
       // Single-device guide: skip the question entirely.
-      if (avail.length === 1) { state.platform = avail[0]; state.multi = false; state.idx = 0; renderGuide(); return; }
+      if (avail.length === 1) { state.platform = avail[0]; state.multi = false; state.idx = 0; state.finished = false; renderGuide(); return; }
       var btns = avail.map(function (d) {
         return '<button class="v-dev" data-dev="' + d + '"><span class="v-dev-ic">' + DEV[d].icon + '</span>' + DEV[d].label + '</button>';
       }).join('');
@@ -252,11 +256,12 @@
         '<div class="v-q">Which device are you using?</div>' +
         '<div class="v-dev-row">' + btns + '</div></div></div>';
       Array.prototype.forEach.call(root.querySelectorAll('.v-dev'), function (b) {
-        b.onclick = function () { state.platform = b.getAttribute('data-dev'); state.multi = true; state.idx = 0; renderGuide(); };
+        b.onclick = function () { state.platform = b.getAttribute('data-dev'); state.multi = true; state.idx = 0; state.finished = false; renderGuide(); };
       });
     }
 
     function renderGuide() {
+      if (state.finished) { renderFinished(); return; }
       // If an overview deep-dive is open, render that instead.
       if (state.overviewId) {
         var ov = findOverview(state.overviewId);
@@ -283,6 +288,7 @@
         });
       }
       var pill = tour ? 'Overview' : 'Step ' + (state.idx + 1);
+      var hasHotspot = (step.annotations || []).some(function (a) { return a.type === 'hotspot'; });
 
       root.innerHTML =
         '<div class="v-top">' +
@@ -291,24 +297,23 @@
         '<span></span>' +
         '</div>' +
         nav +
-        '<div class="v-step"><div class="v-step-main">' +
+        '<div class="v-step"><div class="v-step-main' + (isLandscape(step) ? ' landscape' : '') + '">' +
         '<div class="v-info">' +
         '<div class="v-step-head"><span class="v-step-pill' + (tour ? ' overview' : '') + '">' + pill + '</span>' +
         (step.title ? '<h2>' + esc(step.title) + '</h2>' : '<span class="v-headspacer"></span>') +
         '<span class="v-count">' + (tour ? 'Overview · ' : '') + (state.idx + 1) + ' / ' + seq.length + '</span></div>' +
         '<div class="v-text">' + renderStepText(step, dotCallouts(img)) + '</div>' +
-        (tour ? '<div class="v-tap-hint">Tap a highlighted area to reveal details</div>' : '') +
+        ((tour || hasHotspot) ? '<div class="v-tap-hint">Tap a highlighted area to reveal details</div>' : '') +
         learn +
         '</div>' +
-        '<div class="v-img">' + img.html + '</div>' +
+        '<div class="v-img">' + img.html + (step.image ? '<button class="v-full" data-act="full" title="Open this screenshot full size in a new tab">⤢ Full size</button>' : '') + '</div>' +
         '</div></div>' +
         '<div class="v-controls">' +
         '<button class="v-btn" data-act="prev"' + (state.idx === 0 ? ' disabled' : '') + '>‹ Back</button>' +
-        ((!tour && DATA.ipt && DATA.ipt.email) ? '<button class="v-stuck" data-act="stuck">🙋 I\'m stuck</button>' : '') +
-        '<button class="v-btn primary" data-act="next"' + (state.idx === seq.length - 1 ? ' disabled' : '') + '>' +
-        (state.idx === seq.length - 1 ? 'Done' : 'Next ›') + '</button>' +
+        ((!tour && DATA.ipt && DATA.ipt.email) ? '<button class="v-stuck" data-act="stuck">🙋 I’m stuck</button>' : '') +
+        '<button class="v-btn primary" data-act="next">' + (state.idx === seq.length - 1 ? 'Finish ✓' : 'Next ›') + '</button>' +
         '</div>' +
-        '<div class="v-pop" id="v-pop" style="display:none"></div>';
+        '<div class="v-pop" id="v-pop"></div>';
 
       wireMain(seq, step);
     }
@@ -323,7 +328,7 @@
         '<span class="v-title">' + esc(DATA.title || 'Guide') + '</span>' +
         '<span></span>' +
         '</div>' +
-        '<div class="v-step"><div class="v-step-main">' +
+        '<div class="v-step"><div class="v-step-main' + (isLandscape(ov) ? ' landscape' : '') + '">' +
         '<div class="v-info">' +
         '<div class="v-step-head"><span class="v-step-pill overview">Overview</span>' +
         (ov.title ? '<h2>' + esc(ov.title) + '</h2>' : '<span class="v-headspacer"></span>') +
@@ -331,11 +336,26 @@
         '<div class="v-text">' + renderStepText(ov, dotCallouts(img)) + '</div>' +
         '<div class="v-tap-hint">Tap a highlighted area to reveal details</div>' +
         '</div>' +
-        '<div class="v-img">' + img.html + '</div>' +
+        '<div class="v-img">' + img.html + (ov.image ? '<button class="v-full" data-act="full" title="Open this screenshot full size in a new tab">⤢ Full size</button>' : '') + '</div>' +
         '</div></div>' +
-        '<div class="v-pop" id="v-pop" style="display:none"></div>';
+        '<div class="v-pop" id="v-pop"></div>';
       root.querySelector('[data-act=ovback]').onclick = function () { state.overviewId = null; renderGuide(); };
-      wireHotspots(ov);
+      wireHotspots(ov); wireFull(ov);
+    }
+
+    // End card after the last step (instead of a dead, disabled "Done").
+    function renderFinished() {
+      root.innerHTML =
+        '<div class="v-pick"><div class="v-pick-card">' +
+        '<div class="v-kicker">All done</div>' +
+        '<h1>You’ve reached the end of this guide.</h1>' +
+        '<div class="v-dev-row" style="margin-top:18px">' +
+        '<button class="v-dev" data-act="restart"><span class="v-dev-ic">↺</span>Back to the first step</button>' +
+        (state.multi ? '<button class="v-dev" data-act="home"><span class="v-dev-ic">📱</span>Choose a different device</button>' : '') +
+        '</div></div></div>';
+      root.querySelector('[data-act=restart]').onclick = function () { state.finished = false; state.idx = 0; renderGuide(); };
+      var home = root.querySelector('[data-act=home]');
+      if (home) home.onclick = function () { state.finished = false; state.platform = null; devicePicker(); };
     }
 
     function wireMain(seq, step) {
@@ -343,7 +363,10 @@
       if (homeBtn) homeBtn.onclick = function () { state.platform = null; devicePicker(); };
       var prev = root.querySelector('[data-act=prev]'), next = root.querySelector('[data-act=next]');
       if (prev) prev.onclick = function () { if (state.idx > 0) { state.idx--; renderGuide(); } };
-      if (next) next.onclick = function () { if (state.idx < seq.length - 1) { state.idx++; renderGuide(); } };
+      if (next) next.onclick = function () {
+        if (state.idx < seq.length - 1) { state.idx++; } else { state.finished = true; }
+        renderGuide();
+      };
       Array.prototype.forEach.call(root.querySelectorAll('.v-dot'), function (d) {
         d.onclick = function () { state.idx = parseInt(d.getAttribute('data-go'), 10); renderGuide(); };
       });
@@ -352,24 +375,63 @@
       Array.prototype.forEach.call(root.querySelectorAll('.v-learn'), function (b) {
         b.onclick = function () { state.returnIdx = state.idx; state.overviewId = b.getAttribute('data-ov'); renderGuide(); };
       });
-      wireHotspots(step);
+      wireHotspots(step); wireFull(step);
     }
 
-    // hotspot reveal (tap on touch, hover on desktop)
+    // Click the screenshot (outside a hotspot) or the “Full size” button to
+    // open the annotated screenshot full-screen in a new tab. Built as a blob
+    // page because browsers refuse to open data: URLs as a top-level tab.
+    function wireFull(step) {
+      var shot = root.querySelector('.g-shot'); if (!shot || !step.image) return;
+      shot.classList.add('zoomable');
+      shot.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.hs')) return; openFull(step); });
+      var b = root.querySelector('[data-act=full]'); if (b) b.onclick = function () { openFull(step); };
+    }
+    function openFull(step) {
+      var m = annMarkup(step.image, step.annotations, { calloutMode: true });
+      var caps = m.callouts.map(function (c) { return '<div><b>' + c.num + '</b><span>' + nl2br(c.text) + '</span></div>'; }).join('');
+      var html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(step.title || 'Screenshot') + '</title>' +
+        '<style>html,body{margin:0;min-height:100%;background:#15181d;color:#eee;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}' +
+        '.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}' +
+        '.shot{position:relative;line-height:0}.shot img{display:block;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);width:auto;height:auto}' +
+        '.shot svg{position:absolute;inset:0;width:100%;height:100%}' +
+        '.cap{margin-top:14px;max-width:900px;font-size:15px;line-height:1.5}.cap div{display:flex;gap:10px;align-items:flex-start;margin:6px 0}' +
+        '.cap b{flex-shrink:0;min-width:22px;height:22px;border-radius:50%;background:#eee;color:#15181d;text-align:center;line-height:22px;font-size:12px}' +
+        '.hint{position:fixed;top:10px;right:14px;font-size:12px;opacity:.65}</style></head><body><div class="wrap">' +
+        '<div class="shot"><img src="' + esc(step.image.src) + '" alt="' + esc(step.title || 'Screenshot') + '">' + m.svg + '</div>' +
+        (caps ? '<div class="cap">' + caps + '</div>' : '') + '</div><div class="hint">Close this tab to go back to the guide</div></body></html>';
+      var url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      var w = window.open(url, '_blank');
+      if (!w) alert('Your browser blocked the new tab. Allow pop-ups for this page and try again.');
+    }
+
+    // hotspot reveal: hover on desktop (fades out when the mouse leaves),
+    // tap on touch (tap elsewhere or × to dismiss). Pulses briefly on show.
+    var popHideTimer = null;
+    function hidePop() { var pop = document.getElementById('v-pop'); if (pop) pop.classList.remove('show'); }
     function wireHotspots(step) {
-      var pop = document.getElementById('v-pop');
+      var pop = document.getElementById('v-pop'); if (!pop) return;
+      var hover = matchMedia('(hover:hover)').matches;
+      function cancelHide() { if (popHideTimer) { clearTimeout(popHideTimer); popHideTimer = null; } }
+      function scheduleHide(ms) { cancelHide(); popHideTimer = setTimeout(function () { popHideTimer = null; hidePop(); }, ms); }
+      pop.onmouseenter = cancelHide;                          // reading it keeps it open
+      pop.onmouseleave = function () { if (hover) scheduleHide(250); };
       Array.prototype.forEach.call(root.querySelectorAll('.hs'), function (g) {
         var idx = g.getAttribute('data-hs');
         var a = step.annotations[idx];
         function show() {
           if (!a || !a.text) return;
-          pop.innerHTML = '<span class="v-pop-close">×</span>' + nl2br(a.text);
-          pop.style.display = 'block';
-          pop.querySelector('.v-pop-close').onclick = function () { pop.style.display = 'none'; };
+          cancelHide();
+          pop.innerHTML = '<span class="v-pop-close" role="button" aria-label="Close">×</span>' + nl2br(a.text);
+          pop.querySelector('.v-pop-close').onclick = function (e) { e.stopPropagation(); cancelHide(); hidePop(); };
+          pop.classList.remove('pulse'); void pop.offsetWidth;   // restart the pulse each time
+          pop.classList.add('show', 'pulse');
         }
-        g.addEventListener('click', show);
-        g.addEventListener('mouseenter', function () { if (matchMedia('(hover:hover)').matches) show(); });
+        g.addEventListener('click', function (e) { e.stopPropagation(); show(); });
+        g.addEventListener('mouseenter', function () { if (hover) show(); });
+        g.addEventListener('mouseleave', function () { if (hover) scheduleHide(400); });
       });
+      root.onclick = function (e) { if (!e.target.closest('.hs') && !e.target.closest('#v-pop')) hidePop(); };
     }
 
     function imStuck(step) {
@@ -377,8 +439,8 @@
       var devName = (DEV[state.platform] && DEV[state.platform].label) || state.platform;
       var stepLabel = 'Step ' + (state.idx + 1) + (step.title ? ': ' + step.title : '');
       var subject = 'Help: ' + (DATA.title || 'Guide') + ' (' + devName + ')';
-      var body = "I'm stuck on " + stepLabel + ".\n\nGuide: " + (DATA.title || '') +
-        "\nDevice: " + devName + "\n\n(Describe what you're seeing here.)";
+      var body = "I’m stuck on " + stepLabel + ".\n\nGuide: " + (DATA.title || '') +
+        "\nDevice: " + devName + "\n\n";
       if (!email) { alert('No support contact was configured for this guide.'); return; }
       window.location.href = 'mailto:' + encodeURIComponent(email) +
         '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
@@ -389,7 +451,7 @@
 
   // ===== assemble the interactive HTML ===================================
   // Capture shared function sources so the runtime is self-contained.
-  var SHARED_SRC = [esc, nl2br, annMarkup, renderTable, renderRefs, renderStepText, renderImageBlock]
+  var SHARED_SRC = [esc, nl2br, isLandscape, annMarkup, renderTable, renderRefs, renderStepText, renderImageBlock]
     .map(function (f) { return f.toString(); }).join('\n\n');
   var RUNTIME_SRC = SHARED_SRC + '\n\n(' + runViewer.toString() + ')();';
 
@@ -437,7 +499,10 @@
     '.v-step{padding:8px 18px 18px}',
     '.v-step-main{display:flex;flex-direction:column;gap:16px}',
     '.v-info{min-width:0}',
-    '.v-img{min-width:0}',
+    '.v-img{min-width:0;position:relative}',
+    '.g-shot.zoomable{cursor:zoom-in}',
+    '.v-full{position:absolute;right:10px;bottom:10px;font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.55);background:rgba(27,39,51,.78);color:#fff;cursor:pointer}',
+    '.v-full:hover{background:var(--red)}',
     '.v-step-head{display:flex;align-items:center;gap:10px;margin:8px 0 14px}',
     '.v-step-pill{font-family:var(--mono);font-weight:700;font-size:12px;color:#fff;background:var(--red);padding:4px 12px;border-radius:999px;flex-shrink:0;letter-spacing:.02em}',
     '.v-step-pill.overview{background:#2c5aa0}',
@@ -446,7 +511,7 @@
     '.v-learn-ic{font-size:18px;flex-shrink:0}',
     '.v-headspacer{flex:1}',
     '.v-step-head h2{font-size:18px;flex:1;margin:0}.v-count{font-family:var(--mono);font-size:11px;color:var(--ink-soft);flex-shrink:0}',
-    '@media(min-width:780px){#app{max-width:960px}.v-step-main{flex-direction:row-reverse;align-items:flex-start;gap:30px}.v-img{flex:0 0 300px;max-width:300px;position:sticky;top:72px}.v-info{flex:1}.v-step{padding:14px 28px 24px}}',
+    '@media(min-width:780px){#app{max-width:960px}.v-step-main{flex-direction:row-reverse;align-items:flex-start;gap:30px}.v-img{flex:0 0 300px;max-width:300px;position:sticky;top:72px}.v-info{flex:1}.v-step{padding:14px 28px 24px}.v-step-main.landscape{flex-direction:column}.v-step-main.landscape .v-img{flex:none;max-width:100%;position:static}}',
     '.g-shot{position:relative;background:#fff;border:1.5px solid var(--line);box-shadow:3px 3px 0 rgba(27,39,51,.12);line-height:0;border-radius:4px;overflow:hidden}',
     '.g-shot img{display:block;width:100%;height:auto}.g-shot .ovl{position:absolute;inset:0;width:100%;height:100%}',
     '.v-text,.p-step-text{font-size:15px;line-height:1.55}.g-body{margin:14px 0}',
@@ -470,7 +535,10 @@
     '.v-btn{flex:1;font-family:var(--mono);font-size:14px;padding:12px;border:1.5px solid var(--ink);border-radius:5px;background:#fff;cursor:pointer}',
     '.v-btn.primary{background:var(--red);color:#fff;border-color:#8c271b}.v-btn[disabled]{opacity:.4}',
     '.v-stuck{font-family:var(--mono);font-size:13px;padding:12px;border:1.5px dashed var(--red);border-radius:5px;background:#fff;color:var(--red);cursor:pointer}',
-    '.v-pop{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);max-width:440px;width:calc(100% - 32px);background:var(--ink);color:var(--paper);padding:16px 18px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:20;font-size:15px;line-height:1.5}',
+    '.v-pop{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);max-width:440px;width:calc(100% - 32px);background:var(--ink);color:var(--paper);padding:16px 18px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:20;font-size:15px;line-height:1.5;opacity:0;pointer-events:none;transition:opacity .25s ease}',
+    '.v-pop.show{opacity:1;pointer-events:auto}',
+    '@keyframes v-pulse{0%{transform:translateX(-50%) scale(.94)}45%{transform:translateX(-50%) scale(1.04)}100%{transform:translateX(-50%) scale(1)}}',
+    '.v-pop.pulse{animation:v-pulse .55s ease-out}',
     '.v-pop-close{position:absolute;top:6px;right:12px;cursor:pointer;font-size:22px;color:#fff;opacity:.7}',
     '.v-empty{padding:60px 20px;text-align:center;font-family:var(--mono);color:var(--ink-soft)}',
     '.hs{transition:opacity .15s}'
@@ -487,6 +555,7 @@
     '.p-num{font-family:monospace;font-weight:700;background:var(--red);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}',
     '.p-step-head h2{font-size:15pt;margin:0}',
     '.p-step-grid{display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:start}',
+    '.p-step-grid.landscape{grid-template-columns:1fr}',
     '.p-step-img .g-shot{position:relative;line-height:0;border:1px solid var(--line)}.p-step-img img{width:100%;display:block}.p-step-img .ovl{position:absolute;inset:0;width:100%;height:100%}',
     '.g-note,.g-tip{border-left:4px solid var(--red);background:#f7eeec;padding:8px 10px;margin:8px 0;font-size:11pt}',
     '.g-tip{border-left-color:#2e7d32;background:#eef6ee}',
@@ -510,7 +579,6 @@
   global.Viewer = {
     buildViewerHTML: buildViewerHTML,
     buildPrintHTML: buildPrintHTML,
-    esc: esc,
-    VIEWER_CSS: VIEWER_CSS
+    esc: esc
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -28,12 +28,12 @@
       <button class="btn" id="btnSettings">Guide details</button>
       <span class="tb-sep"></span>
       <button class="btn" id="btnNew">New</button>
-      <button class="btn" id="btnOpen">Load</button>
-      <button class="btn" id="btnSave">Save</button>
+      <button class="btn" id="btnOpen" title="Open a guide file you saved earlier">Load…</button>
+      <button class="btn" id="btnSave" title="Download this guide as a file you can reopen later (Ctrl+S)">Save</button>
       <span class="tb-sep"></span>
-      <button class="btn" id="btnPreview">Preview</button>
-      <button class="btn" id="btnPdf">Export PDF</button>
-      <button class="btn primary" id="btnExport">Export HTML</button>
+      <button class="btn" id="btnPreview" title="Open the finished guide in a new tab to try it">Preview</button>
+      <button class="btn" id="btnPdf" title="Opens your browser’s print dialog — choose “Save as PDF” there">Print / Save as PDF</button>
+      <button class="btn primary" id="btnExport" title="Download the finished guide as a single web page to share">Export web guide</button>
     </div>
   </header>
 
@@ -47,17 +47,19 @@
 
       <div class="part-group" data-part="workflow">
         <div class="part-head"><span class="part-name">▸ Workflow</span><span class="part-count" id="wfCount"></span></div>
+        <div class="part-desc">The ordered steps a reader follows to get something done.</div>
         <ul class="step-list" id="wfList"></ul>
         <div class="part-actions">
-          <button class="btn sm ghost" data-add-shots="workflow">＋ Add screenshots</button>
+          <button class="btn sm ghost" data-add-shots="workflow">+ Add screenshots</button>
         </div>
       </div>
 
       <div class="part-group" data-part="overview">
-        <div class="part-head"><span class="part-name">◎ Overview</span><span class="part-count" id="ovCount"></span></div>
+        <div class="part-head"><span class="part-name">◎ Overviews</span><span class="part-count" id="ovCount"></span></div>
+        <div class="part-desc">Optional deep-dives that explain one screen’s options. Attach one to a workflow step and readers open it from a “Learn more” button.</div>
         <ul class="step-list" id="ovList"></ul>
         <div class="part-actions">
-          <button class="btn sm ghost" data-add-shots="overview">＋ Add screenshots</button>
+          <button class="btn sm ghost" data-add-shots="overview">+ Add screenshots</button>
         </div>
       </div>
     </section>
@@ -65,18 +67,30 @@
     <!-- CENTER: the screenshot / annotation stage -->
     <section class="col col-stage" id="stageCol">
       <div class="stage-empty-msg" id="stageEmpty">
-        Add screenshots to begin.<br><br>
-        Drag &amp; drop multiple screenshots here<br>— they auto-order by file date.
+        <div class="how-title">How it works</div>
+        <ol class="how">
+          <li><b>Add screenshots</b> of each screen — drag &amp; drop them here, paste one with Ctrl+V, or use “+ Add screenshots” on the left.</li>
+          <li><b>Mark them up</b> with arrows, boxes and blur, and write what the reader should do.</li>
+          <li><b>Export</b> a web guide or PDF to share.</li>
+        </ol>
+        <div class="how-hint">Screenshots auto-order by file date — drag the cards on the left to reorder.</div>
+      </div>
+      <div class="stage-zoom" id="stageZoom" style="display:none" role="group" aria-label="Zoom">
+        <button class="btn sm" id="zoomOut" title="Zoom out (Ctrl+−)" aria-label="Zoom out">−</button>
+        <span class="zoom-pct" id="zoomPct" aria-live="polite">100%</span>
+        <button class="btn sm" id="zoomIn" title="Zoom in (Ctrl++)" aria-label="Zoom in">+</button>
+        <button class="btn sm ghost" id="zoomFit" title="Fit to the window (Ctrl+0)">Fit</button>
       </div>
       <div id="stageHost" style="display:none">
-        <div class="stage" id="stage"></div>
-        <div class="drop-hint">Drop a replacement screenshot here — annotations keep their % positions.</div>
+        <div class="stage" id="stage" tabindex="0" role="group" aria-label="Annotation canvas. Arrow keys move the selected annotation; Delete removes it."></div>
+        <div class="drop-hint">Drop a new screenshot here to replace this one — your annotations stay in place.</div>
+        <div class="drop-overlay" id="dropOverlay">Drop to replace this step’s screenshot</div>
       </div>
     </section>
 
     <!-- RIGHT: collapsible build panel -->
     <aside class="col col-build" id="buildPanel">
-      <div id="buildEmpty" class="build-empty">Select or add a step to edit it here.</div>
+      <div id="buildEmpty" class="build-empty">Pick a step on the left to write its instructions and add annotations.</div>
       <div id="buildBody" style="display:none">
 
         <!-- 1 · Step details -->
@@ -96,23 +110,23 @@
             </div>
 
             <div class="toolbar-group">
-              <button class="btn sm" id="btnReplaceShot">⟲ Replace screenshot</button>
-              <button class="btn sm danger" id="btnRemoveStep">🗑 Remove step</button>
+              <button class="btn sm" id="btnReplaceShot" title="Swap in a new screenshot — your annotations stay in place">⟲ Replace screenshot…</button>
+              <button class="btn sm danger" id="btnRemoveStep" title="Delete this step (you can undo for a few seconds)">🗑 Remove step</button>
             </div>
           </div>
         </div>
 
         <!-- 2 · Annotations -->
-        <div class="section" data-sec="annotations">
+        <div class="section open" data-sec="annotations">
           <div class="sec-head"><span class="caret">▸</span><span class="tag-dot"></span><strong>Annotations</strong><span class="filled" data-filled></span></div>
           <div class="sec-body">
             <div class="stage-tools" id="stageTools">
-              <button class="tool-btn active" data-tool="select"><span class="gl">▱</span>Select</button>
-              <button class="tool-btn" data-tool="arrow"><span class="gl">↗</span>Arrow</button>
-              <button class="tool-btn" data-tool="box"><span class="gl">▭</span>Box</button>
-              <button class="tool-btn" data-tool="hotspot"><span class="gl">◎</span>Hotspot</button>
-              <button class="tool-btn" data-tool="dot"><span class="gl">①</span>Dot</button>
-              <button class="tool-btn" data-tool="redact"><span class="gl">▦</span>Blur</button>
+              <button class="tool-btn active" data-tool="select" title="Select — click a shape to move, resize, recolor or delete it"><span class="gl">▱</span>Select</button>
+              <button class="tool-btn" data-tool="arrow" title="Arrow — drag from where it starts to what it points at"><span class="gl">↗</span>Arrow</button>
+              <button class="tool-btn" data-tool="box" title="Box — drag to outline an area of the screen"><span class="gl">▭</span>Box</button>
+              <button class="tool-btn" data-tool="hotspot" title="Hotspot — drag over an area; readers tap it to reveal text you write"><span class="gl">◎</span>Hotspot</button>
+              <button class="tool-btn" data-tool="dot" title="Numbered dot — click to place a marker; its caption is listed under the screenshot"><span class="gl">①</span>Dot</button>
+              <button class="tool-btn" data-tool="redact" title="Blur — drag over names, numbers or anything private to hide it"><span class="gl">▦</span>Blur</button>
             </div>
             <div class="color-dots" id="colorDots" style="margin:8px 0"></div>
             <ul class="ann-list" id="annList"></ul>
@@ -143,7 +157,7 @@
             <div id="refRows"></div>
             <div class="toolbar-group" style="margin-top:8px">
               <button class="btn sm" id="btnAddLink">+ Link</button>
-              <button class="btn sm" id="btnAddPdf">+ Attach PDF</button>
+              <button class="btn sm" id="btnAddPdf">+ Attach PDF…</button>
             </div>
           </div>
         </div>
@@ -156,6 +170,7 @@
   <footer class="footer">
     <div class="footer-status">
       <span class="size-badge" id="sizeBadge">Est. export size: 0 B</span>
+      <span class="save-state" id="saveState" title="Autosave keeps a draft in this browser only. Save (Ctrl+S) writes a file.">No unsaved changes</span>
       <span class="muted" id="stepCounts"></span>
       <span class="spacer"></span>
       <span class="muted">Local-first · nothing leaves your browser</span>
@@ -165,7 +180,7 @@
 
   <!-- ============ MODALS ============ -->
   <div class="modal-back" id="modalBack">
-    <div class="modal" id="modal"></div>
+    <div class="modal" id="modal" role="dialog" aria-modal="true" tabindex="-1"></div>
   </div>
 
   <!-- hidden inputs -->
@@ -176,7 +191,7 @@
   <input type="file" id="fileMedia" accept="image/*,application/pdf" multiple style="display:none">
   <input type="file" id="fileKeyImg" accept="image/*" style="display:none">
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- classic scripts, ordered: no ES modules so file:// works -->
   <script src="js/model.js"></script>
@@ -184,6 +199,8 @@
   <script src="js/storage.js"></script>
   <script src="js/viewer-template.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/undo.js"></script>
+  <script src="js/draft.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

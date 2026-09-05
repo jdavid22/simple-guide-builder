@@ -210,16 +210,13 @@
     readImageFile: readImageFile,
     readPdfFile: readPdfFile,
     readAsDataURL: readAsDataURL,
-    eachStep: eachStep,
     estimateBytes: estimateBytes,
     fmtBytes: fmtBytes,
-    dataUrlBytes: dataUrlBytes,
     downloadBlob: downloadBlob,
     slug: slug,
     saveFat: saveFat,
     saveFolder: saveFolder,
     parseProjectFile: parseProjectFile,
-    attachMedia: attachMedia,
-    collectFileRefs: collectFileRefs
+    attachMedia: attachMedia
   };
 })(typeof window !== 'undefined' ? window : this);

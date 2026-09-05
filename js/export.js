@@ -16,7 +16,7 @@
     var blob = new Blob([html], { type: 'text/html' });
     var url = URL.createObjectURL(blob);
     var win = global.open(url, '_blank');
-    if (!win) { alert('Preview was blocked by the popup blocker. Allow popups and try again.'); }
+    if (!win) { alert('Your browser blocked the preview window. Allow pop-ups for this page, then try Preview again.'); }
     setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
@@ -24,7 +24,7 @@
   function exportPDF(project, platform) {
     var html = global.Viewer.buildPrintHTML(project, platform);
     var win = global.open('', '_blank');
-    if (!win) { alert('PDF export needs a popup. Allow popups and try again.'); return; }
+    if (!win) { alert('Your browser blocked the print window. Allow pop-ups for this page, then try again.'); return; }
     win.document.open();
     win.document.write(html);
     win.document.close();

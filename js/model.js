@@ -1,9 +1,9 @@
 /* model.js — project data model for the Mobile Guide Builder.
  *
- * One project holds two parallel tracks (android, iphone). Each track is one
- * guide TYPE (workflow | overview) and an ordered list of steps. All annotation
- * coordinates are stored as PERCENTAGES of the image (0..100) so that swapping a
- * screenshot of the same aspect ratio leaves the annotations roughly in place.
+ * One project holds device tracks (android/iphone or pc). Each track has a
+ * workflow (the ordered process) plus overviews (screen deep-dives linked to
+ * workflow steps). All annotation coordinates are stored as PERCENTAGES of the
+ * image (0..100) so swapping a same-size screenshot keeps the annotations in place.
  *
  * Loaded as a classic script: everything hangs off the global `Model`.
  */
@@ -52,13 +52,9 @@
     { name: 'Ink', value: '#1b2733' }
   ];
 
-  function newLegendRow() {
-    // kind: 'color' (swatch) | 'icon' (glyph) | 'image' (uploaded crop -> dataURL in .image)
+  // A color/icon key row. kind: 'color' (swatch) | 'icon' (glyph) | 'image' (uploaded crop).
+  function newKeyRow() {
     return { id: uid('row'), kind: 'color', value: '#c0392b', icon: '', image: '', text: '' };
-  }
-
-  function newReference() {
-    return { id: uid('ref'), kind: 'link', label: '', href: '', data: '', name: '' };
   }
 
   function newStep() {
@@ -128,7 +124,6 @@
   }
 
   function num(v, d) { return (typeof v === 'number' && !isNaN(v)) ? v : d; }
-  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
   // Coerce a raw object (from a loaded file) into a valid annotation.
   function normalizeAnnotation(a) {
@@ -151,8 +146,7 @@
     step.image = s.image || null;
     step.annotations = Array.isArray(s.annotations)
       ? s.annotations.map(normalizeAnnotation).filter(Boolean) : [];
-    step.references = Array.isArray(s.references)
-      ? s.references.map(normalizeRow.bind(null)).map(normRef) : [];
+    step.references = Array.isArray(s.references) ? s.references.map(normRef) : [];
     step.linkedStepIds = Array.isArray(s.linkedStepIds)
       ? s.linkedStepIds.map(String) : [];
     step.linkLabel = typeof s.linkLabel === 'string' ? s.linkLabel : '';
@@ -227,8 +221,6 @@
   }
 
   global.Model = {
-    SCHEMA_VERSION: SCHEMA_VERSION,
-    ANNOTATION_TYPES: ANNOTATION_TYPES,
     PARTS: PARTS,
     DEFAULT_LEARN_LABEL: DEFAULT_LEARN_LABEL,
     FONTS: FONTS,
@@ -238,15 +230,10 @@
     sanitizeDevices: sanitizeDevices,
     PALETTE: PALETTE,
     uid: uid,
-    clamp: clamp,
     newProject: newProject,
-    newTrack: newTrack,
     newStep: newStep,
     newAnnotation: newAnnotation,
-    newLegendRow: newLegendRow,
-    newReference: newReference,
-    normalizeProject: normalizeProject,
-    normalizeStep: normalizeStep,
-    normalizeAnnotation: normalizeAnnotation
+    newKeyRow: newKeyRow,
+    normalizeProject: normalizeProject
   };
 })(typeof window !== 'undefined' ? window : this);
